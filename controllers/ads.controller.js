@@ -9,7 +9,7 @@ exports.getAll = async (req, res) => {
         res.json(ad);
     }
     catch(err) {
-        req.status(500).json({ message: err });
+        res.status(500).json({ message: err });
     }
 };
 exports.getId = async (req, res) => {
