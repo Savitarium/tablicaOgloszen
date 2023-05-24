@@ -25,12 +25,14 @@ app.use(express.urlencoded({extended: false}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '/client/build')));
 app.use(express.static(path.join(__dirname, '/public')));
+app.use('/uploads', express.static(path.join(__dirname, '/public/uploads')));
+
 
 const NODE_ENV = process.env.NODE_ENV;
 let dbUri = '';
 
 if(NODE_ENV === 'production') dbUri = 'mongodb+srv://nadarvlkan:DVS5BTN441UabQwT@mongodb.zxvffp9.mongodb.net/AdvertBoard?retryWrites=true&w=majority';
-else dbUri = 'mongodb+srv://nadarvlkan:DVS5BTN441UabQwT@mongodb.zxvffp9.mongodb.net/AdvertBoard?retryWrites=true&w=majority';
+else dbUri = 'mongodb://127.0.0.1:27017/AdvertBoard';
 
 mongoose.connect(dbUri, {
     useNewUrlParser: true,
@@ -47,7 +49,7 @@ app.use(
     session({
         secret: process.env.secretsession,
         store: MongoStore.create({
-            mongoUrl: 'mongodb+srv://nadarvlkan:DVS5BTN441UabQwT@mongodb.zxvffp9.mongodb.net/AdvertBoard?retryWrites=true&w=majority',
+            mongoUrl: 'dbUri',
             mongoOptions: {
                 useNewUrlParser: true,
                 useUnifiedTopology: true,
