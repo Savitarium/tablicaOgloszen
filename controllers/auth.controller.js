@@ -9,7 +9,7 @@ exports.register = async (req, res) => {
         const { login, password, phone } = sanitize(req.body);
         console.log(req.body, req.file);
         const fileType = req.file ? await getImageFileType(req.file) : 'unknown';
-        if (login && typeof login === 'string' && password && typeof password === 'string' && phone && req.file && ['image/png', 'image/jpeg', 'image/gif'].includes(fileType)) {
+        if (login && typeof login === 'string' && password && typeof password === 'string' && phone && req.file && ['image/jpg', 'image/png', 'image/jpeg', 'image/gif'].includes(fileType)) {
 
             const phonePattern = /^[0-9]+$/;
             if (!phonePattern.test(phone)) {
@@ -29,7 +29,7 @@ exports.register = async (req, res) => {
             if(req.file) {
                 fs.unlinkSync(req.file.path);
             }
-            res.status(400).json({ message: 'Bad request' });
+            res.status(400).json({ message: 'Bad request'});
         }
     } catch(err) {
         if(req.file) {
@@ -62,7 +62,7 @@ exports.login = async (req, res) => {
     }
 };
 exports.getUser = async (req, res) => {
-   res.send('Użytkownik zalogowany');
+    res.send(req.session.user.login);
 };
 exports.logout = async (req, res) => {
     req.session.destroy();

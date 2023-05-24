@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const router = express.Router();
 const path = require('path');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
@@ -16,7 +15,7 @@ const app = express();
 if(process.env.NODE_ENV !== 'production') {
     app.use(
         cors({
-            origin: ['http://localhost:3000'],
+            origin: ['http://localhost:3000', 'http://localhost:8000'],
             credentials: true,
         })
     );
@@ -24,17 +23,19 @@ if(process.env.NODE_ENV !== 'production') {
 app.use(helmet());
 app.use(express.urlencoded({extended: false}));
 app.use(express.json());
-app.use(cors());
 app.use(express.static(path.join(__dirname, '/client/build')));
 app.use(express.static(path.join(__dirname, '/public')));
 
 const NODE_ENV = process.env.NODE_ENV;
 let dbUri = '';
 
-if(NODE_ENV === 'production') dbUri = 'url to remote db';
+if(NODE_ENV === 'production') dbUri = 'mongodb+srv://nadarvlkan:DVS5BTN441UabQwT@mongodb.zxvffp9.mongodb.net/?retryWrites=true&w=majority';
 else dbUri = 'mongodb://127.0.0.1:27017/AdvertBoard';
 
-mongoose.connect(dbUri, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(dbUri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+});
 const db = mongoose.connection;
 
 db.once('open', () => {
@@ -42,22 +43,32 @@ db.once('open', () => {
 });
 db.on('error', err => console.log('Error ' + err));
 
-app.use(session({
-    secret: process.env.secretsession,
-    store: MongoStore.create(db),
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV == 'production',
-    }, }));
+app.use(
+    session({
+        secret: process.env.secretsession,
+        store: MongoStore.create({
+            mongoUrl: dbUri,
+            mongoOptions: {
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+            },
+            collectionName: 'sessions',
+            cookie: {
+                secure: process.env.NODE_ENV == 'production',
+            },
+        }),
+        resave: false,
+        saveUninitialized: false,
+    })
+);
 
 app.use('/api', adRoutes);
 app.use('/api', userRoutes);
 app.use('/auth', authRoutes);
 
-//app.get('*', (req, res) => {
-//    res.sendFile(path.join(__dirname, '/client/build/index.html'));
-//});
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '/client/build/index.html'));
+});
 
 
 app.use((req, res) => {

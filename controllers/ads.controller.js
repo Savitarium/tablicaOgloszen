@@ -5,7 +5,7 @@ const fs = require('fs');
 
 exports.getAll = async (req, res) => {
     try {
-        const ad = await Ad.find().populate('user_info', '-pass'); // Pobierz wszystkie reklamy i wykonaj populację dla pola 'user_info'
+        const ad = await Ad.find().populate('user_info', '-password'); // Pobierz wszystkie reklamy i wykonaj populację dla pola 'user_info'
         res.json(ad);
     }
     catch(err) {
@@ -15,7 +15,7 @@ exports.getAll = async (req, res) => {
 exports.getId = async (req, res) => {
 
     try {
-        const ad = await Ad.findById(req.params.id).populate('user_info', '-pass');
+        const ad = await Ad.findById(req.params.id).populate('user_info', '-password');
         if(!ad) res.status(404).json({ message: 'Not found' });
         else res.json(ad);
     }
@@ -26,15 +26,14 @@ exports.getId = async (req, res) => {
 
 exports.post = async (req, res) => {
     try {
-        const { location, price, publication_date, text, title } = sanitize(req.body);
+        const { location, price, text, title } = sanitize(req.body);
         const fileType = req.file ? await getImageFileType(req.file): 'unknown';
-        if(req.file && ['image/png', 'image/jpeg', 'image/gif'].includes(fileType) && location && publication_date && text && title) {
+        if(req.file && ['image/png', 'image/jpeg', 'image/gif', 'image/jpg'].includes(fileType) && location && text && title) {
             const locationPattern = new RegExp(
                 /(<\s*(strong|em)*>(([A-Za-z0-9\s])*)<\s*\/\s*(strong|em)>)|(([A-Za-z0-9\s\.])*)/,
                 "g"
             );
-            const pricePattern = /^[0-9]+$/;
-            const publication_datePattern = /^[\d.]+$/;
+            const pricePattern = /^[0-9.,]+$/;
             const textPattern = new RegExp(
                 /(<\s*(strong|em)*>(([A-Za-z0-9\s])*)<\s*\/\s*(strong|em)>)|(([A-Za-z0-9\s\.])*)/,
                 "g"
@@ -55,12 +54,6 @@ exports.post = async (req, res) => {
                     fs.unlinkSync(req.file.path);
                 }
             }
-            if (!publication_datePattern.test(publication_date)) {
-                throw new Error('Invalid date');
-                if(req.file) {
-                    fs.unlinkSync(req.file.path);
-                }
-            }
             if (!textPattern.test(text)) {
                 throw new Error('Invalid text');
                 if(req.file) {
@@ -73,9 +66,20 @@ exports.post = async (req, res) => {
                     fs.unlinkSync(req.file.path);
                 }
             }
-            const newAd = new Ad({ image: req.file.filename, location: location, price: price, publication_date: publication_date, text:text, title:title });
+            const userId = req.session.user.id;
+            console.log(req.session.user.id);
+            const currentDate = new Date();
+            const newAd = new Ad({
+                image: req.file.filename,
+                location: location,
+                price: price,
+                publication_date: currentDate,
+                text:text,
+                title:title,
+                user_info: userId
+            });
             await newAd.save();
-            res.json({ message: 'OK' });
+            res.json({ newAd });
         } else {
             throw new Error('Wrong input');
             if(req.file) {
@@ -83,7 +87,7 @@ exports.post = async (req, res) => {
             }
         }
     } catch(err) {
-        res.status(500).json({ message: err} );
+        res.status(500).json({ message: err.message });
         if(req.file) {
             fs.unlinkSync(req.file.path);
         }
@@ -108,7 +112,6 @@ exports.put = async (req, res) => {
                 "g"
             );
             const pricePattern = /^[0-9]+$/;
-            const publication_datePattern = /^[\d.]+$/;
             const textPattern = new RegExp(
                 /(<\s*(strong|em)*>(([A-Za-z0-9\s])*)<\s*\/\s*(strong|em)>)|(([A-Za-z0-9\s\.])*)/,
                 "g"
@@ -123,36 +126,56 @@ exports.put = async (req, res) => {
             if (!pricePattern.test(price)) {
                 throw new Error('Invalid price');
             }
-            if (!publication_datePattern.test(publication_date)) {
-                throw new Error('Invalid date');
-            }
             if (!textPattern.test(text)) {
                 throw new Error('Invalid text');
             }
             if (!titlePattern.test(title)) {
                 throw new Error('Invalid title');
             }
+        const currentDate = new Date();
         ad.location = location;
         ad.price = price;
-        ad.publication_date = publication_date;
+        ad.publication_date = currentDate;
         ad.text = text;
         ad.title = title;
 
-        const updatedAd = await ad.save();
-        res.json(updatedAd);
+        const edAd = await ad.save();
+        res.json({ edAd });
     } catch(err) {
-        res.status(500).json({ message: err})
+        res.status(500).json({ message: err.message })
     }
 };
 exports.delete = async (req, res) => {
     try {
-        const ad = await Ad.findByIdAndDelete(req.params.id);
-        if (ad) {
-            res.json(await Ad.find().populate('user_info', '-pass'));
-        } else {
-            res.status(404).json({ message: 'Not found...' });
+        const ad = await Ad.findById(req.params.id);
+        if (!ad) {
+            return res.status(404).json({ message: 'Not found...' });
         }
+        if (ad.image) {
+            try {
+                fs.unlinkSync(`public/uploads/${ad.image}`);
+            } catch (error) {
+                if (error.code !== 'ENOENT') {
+                    throw error;
+                }
+            }
+        }
+        await Ad.deleteOne({ _id: req.params.id });
+
+        res.json(await Ad.find().populate('user_info', '-password'));
     } catch(err) {
         res.status(500).json({ message: err });
     }
 };
+exports.searchPhrase = async (req, res, next) => {
+    const { searchPhrase } = req.params;
+    try {
+        const ads = await Ad.find({ $text: { $search: searchPhrase } });
+        if (!ads) return res.status(404).json({ message: 'Ad not found' });
+        else res.json(ads);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+
