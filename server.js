@@ -29,7 +29,7 @@ app.use(express.static(path.join(__dirname, '/public')));
 const NODE_ENV = process.env.NODE_ENV;
 let dbUri = '';
 
-if(NODE_ENV === 'production') dbUri = 'mongodb+srv://nadarvlkan:DVS5BTN441UabQwT@mongodb.zxvffp9.mongodb.net/?retryWrites=true&w=majority';
+if(NODE_ENV === 'production') dbUri = 'mongodb+srv://nadarvlkan:DVS5BTN441UabQwT@mongodb.zxvffp9.mongodb.net/AdvertBoard?retryWrites=true&w=majority';
 else dbUri = 'mongodb://127.0.0.1:27017/AdvertBoard';
 
 mongoose.connect(dbUri, {
