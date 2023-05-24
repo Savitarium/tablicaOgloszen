@@ -1,1 +1,1 @@
-# tablicaOgloszen
+tablicaogloszen.nadarvlkan.repl.co
